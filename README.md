@@ -1,6 +1,6 @@
 # PreHydro GIS Tool — Global QGIS Edition 4.2
 
-**Built by Ackrad Shimwense**
+**Built by Ackrad Seth Chisale**
 
 This is the open-source, international version of PreHydro. It takes a site or watershed boundary, chooses a sensible local projected CRS, obtains supported public datasets when local authoritative data is unavailable, derives terrain and drainage products, and records every source used.
 
@@ -165,4 +165,3 @@ The current release passes **10 automated tests** across acquisition safeguards,
 ## Engineering boundary
 
 This plugin prepares GIS evidence. It does not choose design storms, runoff parameters, roughness, structures, flows or hydraulic boundary conditions. Those choices require verified local data and accountable engineering review.
-
