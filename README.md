@@ -4,13 +4,29 @@
 
 This is the open-source, international version of PreHydro. It takes a site or watershed boundary, chooses a sensible local projected CRS, obtains supported public datasets when local authoritative data is unavailable, derives terrain and drainage products, and records every source used.
 
-![Representative QGIS workflow for a Copperbelt watershed using sample data](docs/images/qgis-global-watershed.png)
+![Multi-site watershed preparation output used to validate the portable PreHydro workflow](docs/images/multi-site-hydro-validation.png)
 
 ## Project summary
 
 The original ArcGIS workflow solved a real preparation problem, but it depended on ArcGIS Pro and US-focused services. I rebuilt the workflow as a QGIS Processing plugin so the same approach can be used in Zambia, India, the rest of Africa, Asia and other regions without an ArcGIS license.
 
 The plugin is aimed at early drainage screening for mines, renewable-energy sites, transport corridors, urban expansion, industrial facilities and consulting studies. It produces a defensible starting package when the engineer has a boundary but does not yet have every local dataset assembled.
+
+## Reference outputs behind the portable edition
+
+These are full-screen captures from the original ArcGIS implementation. They are included because they show the engineering results the QGIS edition is intended to reproduce across regions: complete watershed coverage, explicit source and hazard layers, traceable review packaging, and checks on terrain-tile coverage. They are reference outputs, not screenshots of the QGIS interface.
+
+### Source and hazard layers kept visible for review
+
+![HUC-12, project boundary, FEMA context, streams, roads and crossing candidates shown together](docs/images/source-hazard-reference-layers.png)
+
+### Automated GIS review package
+
+![Automated workflow output with drainage paths, terrain tiles and review-package controls](docs/images/automated-review-package.png)
+
+### Terrain tile and boundary coverage check
+
+![Satellite basemap with terrain tiles and project polygons used to verify acquisition coverage](docs/images/terrain-tile-validation.png)
 
 ## What problem it solves
 
