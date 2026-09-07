@@ -1,0 +1,12 @@
+FULLY HYDRO PREPARATION 4.2 - GLOBAL QGIS EDITION
+
+1. Use QGIS 3.44 or newer.
+2. Plugins > Manage and Install Plugins > Install from ZIP.
+3. Select PreHydro-GIS-Tool-QGIS-Global-4.2.zip.
+4. Enable the plugin.
+5. Processing Toolbox > PreHydro GIS Tool - Global > 00 - START HERE.
+6. Run 00 - Preflight Environment Check.
+7. Use a small boundary for the first automatic test.
+8. Leave Target CRS blank for automatic local UTM.
+9. Leave an input blank to fetch it; supply it to use an authoritative override.
+10. Verify source provenance, alignment, units, coverage, QA, and review warnings.

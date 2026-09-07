@@ -1,0 +1,15 @@
+[general]
+name=PreHydro GIS Tool - Global QGIS Edition
+description=Global automatic public-data acquisition, watershed GIS preparation, terrain derivatives, drainage screening, QA, and HEC-RAS GIS handoff for QGIS.
+version=4.2.0-qgis.1
+qgisMinimumVersion=3.44
+author=PreHydro GIS Tool project
+email=
+about=Extends the supplied 4.1 workflow for QGIS with credential-free global terrain, land-cover, OpenStreetMap, and SoilGrids acquisition plus authoritative manual overrides. It does not create or approve a hydraulic model.
+category=Raster
+hasProcessingProvider=yes
+experimental=True
+deprecated=False
+homepage=
+repository=
+tracker=
