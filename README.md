@@ -1,19 +1,77 @@
-# PreHydro GIS Tool 4.2 - Global QGIS Edition
+# PreHydro GIS Tool — Global QGIS Edition 4.2
 
-This QGIS Processing plugin extends the supplied 4.1 workflow with automatic,
-credential-free public-data acquisition for site and watershed projects worldwide.
-It is intended for Zambia, India, Africa, and other regions—not only the United States.
+**Built by Ackrad Shimwense**
 
-![Watershed-scale terrain and drainage review](docs/images/prehydro-map-review.png)
+This is the open-source, international version of PreHydro. It takes a site or watershed boundary, chooses a sensible local projected CRS, obtains supported public datasets when local authoritative data is unavailable, derives terrain and drainage products, and records every source used.
 
-## The practical idea
+![Representative QGIS workflow for a Copperbelt watershed using sample data](docs/images/qgis-global-watershed.png)
 
-Give the tool a boundary. If local authoritative layers are available, use them. If they are not,
-the tool can assemble a defensible first-pass dataset from public global sources, choose a local
-projected CRS, and record exactly what it used. That makes it useful for a mine access-road review
-in Zambia, an urban drainage screen in India, or an early energy-site study elsewhere.
+## Project summary
 
-The physical drainage threshold stays consistent when raster resolution changes:
+The original ArcGIS workflow solved a real preparation problem, but it depended on ArcGIS Pro and US-focused services. I rebuilt the workflow as a QGIS Processing plugin so the same approach can be used in Zambia, India, the rest of Africa, Asia and other regions without an ArcGIS license.
+
+The plugin is aimed at early drainage screening for mines, renewable-energy sites, transport corridors, urban expansion, industrial facilities and consulting studies. It produces a defensible starting package when the engineer has a boundary but does not yet have every local dataset assembled.
+
+## What problem it solves
+
+- Public DEM tiles arrive in geographic coordinates and may span several files.
+- A study needs a projected CRS in metres before areas, slopes and distances are meaningful.
+- Roads, waterways, land cover and soils come from different services and formats.
+- Source completeness varies by region.
+- A failed download must not be mistaken for “no hazard.”
+- Large automated requests need limits so a country-sized boundary does not accidentally become a workstation-sized raster job.
+
+PreHydro handles those issues through explicit source roles, manual overrides, safety limits and provenance records.
+
+## Source strategy
+
+| Role | Automatic first-pass source | Manual option |
+|---|---|---|
+| Projected CRS | Local WGS 84 UTM zone | Any reviewed projected CRS in metres/feet |
+| DEM | Copernicus GLO-30; GLO-90 fallback | Survey, LiDAR or authoritative national DEM |
+| Roads/rail/waterways | OpenStreetMap through Overpass | Government, mine or project GIS |
+| Land cover | ESA WorldCover 10 m | National or project classification |
+| Soil reference | ISRIC SoilGrids | Field/geotechnical or national soil mapping |
+| Flood hazard | No invented global polygon | Reviewed authoritative hazard layer |
+
+A manual layer always wins for its role. Automatic data is useful for scoping; it does not replace survey or regulatory data.
+
+## How the plugin works
+
+```mermaid
+flowchart TD
+    A[Boundary polygon] --> B[Repair and dissolve]
+    B --> C[Choose local projected CRS]
+    C --> D{Manual layer supplied?}
+    D -->|Yes| E[Validate and use override]
+    D -->|No| F[Acquire supported public source]
+    E --> G[Clip, align and document]
+    F --> G
+    G --> H[Terrain and drainage derivation]
+    H --> I[Crossing screen and GIS handoff]
+    I --> J[Manifest, QA and provenance]
+```
+
+## Code behind the workflow
+
+### Bounded Copernicus DEM acquisition
+
+```python
+def fetch_copernicus_dem(bbox, folder, feedback=None, max_tiles=36):
+    west, south, east, north = bbox
+    cells = [
+        (lat, lon)
+        for lat in _degree_cells(south, north)
+        for lon in _degree_cells(west, east)
+    ]
+    if not cells or len(cells) > max_tiles:
+        raise AcquisitionError(
+            f"DEM request needs {len(cells)} tiles; limit is {max_tiles}. "
+            "Use a smaller watershed or supply a prepared DEM."
+        )
+```
+
+### Resolution-independent drainage threshold
 
 ```python
 if "foot" in unit or "feet" in unit:
@@ -22,81 +80,89 @@ elif "meter" in unit or "metre" in unit:
     square_units = acres * 4046.8564224
 else:
     raise ValueError("Target CRS must use metres or feet")
-return max(1, int(round(square_units / abs(pixel_x * pixel_y))))
+
+threshold_cells = max(1, int(round(square_units / abs(pixel_x * pixel_y))))
 ```
 
-## Automatic source policy
+### Provenance is a first-class output
 
-The default policy is **automatic public sources where manual inputs are missing**.
-A user-supplied authoritative input always takes priority for its role.
+```python
+records.append(SourceRecord(
+    "dem", dataset, "Copernicus Programme / AWS Open Data",
+    url, str(selected), "downloaded",
+    "GLO-90 fallback used." if resolution == 30 else "",
+))
+```
 
-| Role | Automatic source | Notes |
-|---|---|---|
-| Projected CRS | Local WGS 84 UTM zone | Select a CRS manually for wide or cross-zone projects. |
-| DEM | Copernicus DEM GLO-30 Public; GLO-90 fallback | Global DSM; maximum 36 one-degree tiles per automatic run. |
-| Roads and railways | OpenStreetMap through Overpass | Site-sized requests only; completeness varies. |
-| Reference waterways | OpenStreetMap through Overpass | Used as a reference; derived drainage still comes from the DEM. |
-| Land cover | ESA WorldCover 2021 v200, 10 m | Global categorical land-cover raster. |
-| Soil reference | ISRIC SoilGrids surface sand and clay | Continuous predictions, not an HSG classification. |
-| Flood hazards | Manual authoritative input required | The tool does not convert a visual WMS into analytical flood polygons or imply no hazard. |
+## Technology used
 
-Every source, URL, status, and local file is recorded in
-`01_Source/INPUT_SOURCE_PROVENANCE.json`.
-
-## Requirements
-
-- QGIS 3.44 or newer
-- QGIS Processing, GDAL, and GRASS providers enabled
-- Internet access for automatic acquisition
-- An official boundary polygon
-- A writable parent output folder
-
-No ArcGIS Pro, ArcPy, private portal, API key, GitHub account, or separate Python
-installation is required.
+- QGIS 3.44 Processing framework and Python plugin API
+- GDAL and GRASS terrain/hydrology algorithms
+- Copernicus DEM cloud-optimized GeoTIFFs
+- ESA WorldCover, OpenStreetMap/Overpass and SoilGrids
+- GeoPackage, GeoTIFF, CSV and JSON output
+- Python standard-library networking with retry and bounded-request logic
+- Unit-tested core functions that do not require QGIS to import
 
 ## Install
 
-1. Open **Plugins > Manage and Install Plugins > Install from ZIP**.
-2. Select `PreHydro-GIS-Tool-QGIS-Global-4.2.zip`.
-3. Enable the plugin.
-4. Open **Processing > Toolbox**.
-5. Expand **PreHydro GIS Tool - Global > 00 - START HERE**.
-6. Run **00 - Preflight Environment Check**.
+Build the installable plugin:
 
-## Run automatically
+```powershell
+python tools/build_release.py
+```
 
-1. Open **PreHydro GIS Tool 4.2 - Global QGIS**.
-2. Choose an existing output parent folder and a new project name.
-3. Select the complete official boundary polygon layer.
-4. Keep the source policy on automatic.
-5. Leave Target CRS blank to select local UTM automatically.
-6. Leave DEM and optional layers blank to acquire the supported public sources.
-7. Use **Same as target CRS map units** for the automatically downloaded DEM.
-8. Review the drainage-area threshold; 25 acres is only a starting value.
-9. Run first with a small site or watershed boundary.
+Then use **QGIS > Plugins > Manage and Install Plugins > Install from ZIP**. Open **Processing Toolbox > PreHydro GIS Tool - Global > 00 - START HERE** and run the preflight check.
 
-For authoritative inputs, populate any override field. That input wins and its
-provenance is recorded as `manual_override`. Use manual-only mode to prohibit network
-acquisition.
+## Inputs and run sequence
 
-## Safety limits
+1. Choose an existing output parent folder and a unique project name.
+2. Select the complete boundary polygon layer.
+3. Leave Target CRS blank for automatic local UTM, or provide a reviewed projected CRS.
+4. Supply authoritative layers where available.
+5. Leave missing roles blank to enable supported public-source acquisition.
+6. Review the physical drainage-area threshold.
+7. Run a small site or watershed first and inspect the provenance report.
 
-Automatic acquisition is deliberately bounded. It accepts at most 36 one-degree DEM
-tiles, 16 WorldCover tiles, and a four-square-degree OpenStreetMap bounding box. Split
-country/continent work into hydrologically meaningful watersheds or supply prepared
-regional datasets. Do not run a continent-wide 30 m analysis as one job.
+Automatic acquisition is limited to 36 one-degree DEM tiles, 16 WorldCover tiles and a four-square-degree Overpass request. Larger studies should be split by catchment or use prepared regional data.
 
-## Outputs
+## Output package
 
-- repaired and dissolved official boundary
-- projected/clipped/filled DEM
-- flow accumulation, flow direction, basins, and derived streams
-- hillshade, slope percent, and aspect
-- clipped roads, railways, streams, land cover, soil references, and supplied flood layers
-- potential transportation/drainage crossings
-- GeoPackage and GeoTIFF HEC-RAS GIS handoff files
-- source provenance, QA JSON, and final text/JSON manifests
+```text
+<Project_Name>/
+├── 01_Source/
+│   └── INPUT_SOURCE_PROVENANCE.json
+├── 02_Processed/
+│   ├── Terrain/
+│   ├── Drainage/
+│   ├── Land_Cover/
+│   ├── Soils/
+│   └── Transportation/
+├── HEC_RAS_GIS_Export/
+├── qa_qc/
+├── FINAL_OUTPUT_MANIFEST.txt
+└── FINAL_OUTPUT_MANIFEST.json
+```
 
-This tool prepares GIS evidence. Hydraulic geometry, Manning's n, structures, flows,
-boundary conditions, rainfall distributions, calibration, and engineering approval
-remain qualified-engineer work.
+## Verification
+
+```powershell
+python -m unittest discover -s tests -v
+python tools/build_release.py
+```
+
+The current release passes **10 automated tests** across acquisition safeguards, tile naming, UTM selection, unit conversion, source policy and release construction.
+
+## What I would build next
+
+- Country-specific authoritative source registries for Zambia, India, Canada and Australia.
+- STAC search for regional DEM and land-cover catalogs.
+- Download caching and checksums for reproducible reruns.
+- Hydrography conflation between DEM-derived flow paths and mapped waterways.
+- Better processing of very wide studies that cross UTM zones.
+- A printable engineering data-gap report before downstream modelling starts.
+
+## Engineering boundary
+
+This plugin prepares GIS evidence. It does not choose design storms, runoff parameters, roughness, structures, flows or hydraulic boundary conditions. Those choices require verified local data and accountable engineering review.
+
